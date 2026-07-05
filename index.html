@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VR Boss Boxing - Pro Edition</title>
+  <title>VR Boss Boxing - Arcade Edition</title>
   
   <!-- Tailwind CSS per l'interfaccia -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,7 +20,7 @@
   <div id="setup-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-slate-950">
     <div class="max-w-md w-full bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-800 text-center">
       <h1 class="text-3xl font-black text-rose-500 mb-1 tracking-wider">VR BOSS BOXING</h1>
-      <p class="text-slate-400 text-xs mb-6">Metti KO il tuo capo in Realtà Virtuale</p>
+      <p class="text-slate-400 text-xs mb-6">Completa i livelli e metti KO il tuo capo!</p>
       
       <!-- Upload Foto -->
       <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 mb-5 hover:border-rose-500 transition-colors bg-slate-950/50">
@@ -61,7 +61,6 @@
   <video id="webcam" playsinline autoplay muted style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;"></video>
 
   <!-- ================= SCENA 3D VR (A-FRAME) ================= -->
-  <!-- Utilizziamo "renderer="alpha: true" per permettere la trasparenza dello sfondo -->
   <a-scene id="game-scene" renderer="alpha: true; antialias: true; colorManagement: true;" vr-mode-ui="enabled: true" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent;">
     
     <!-- Elementi Virtuali di Sfondo (Mostrati solo se la trasparenza è disattivata) -->
@@ -70,28 +69,23 @@
       <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#111827"></a-plane>
     </a-entity>
     
-    <!-- Griglia 3D sul pavimento (Sempre utile per dare il senso dello spazio tridimensionale) -->
     <a-grid color="#334155" width="20" height="20" opacity="0.4"></a-grid>
 
     <!-- ================= IL MANICHINO DA BOXE (BOB DUMMY) ================= -->
-    <a-entity id="boss" position="0 0 -1.7">
-      <!-- 1. Base pesante a terra -->
+    <!-- Inizialmente nascosto, apparirà solo al livello 3 -->
+    <a-entity id="boss" position="0 0 -1.7" visible="false">
+      <!-- Base pesante -->
       <a-cylinder position="0 0.08 0" radius="0.45" height="0.16" color="#334155"></a-cylinder>
-      
-      <!-- 2. Palo metallico di supporto -->
+      <!-- Palo metallico -->
       <a-cylinder position="0 0.6 0" radius="0.04" height="0.9" color="#94a3b8"></a-cylinder>
-      
-      <!-- 3. Busto atletico nero/grigio -->
+      <!-- Busto -->
       <a-cylinder position="0 1.1 0" radius="0.22" height="0.6" color="#1e293b" scale="1.2 1 0.7"></a-cylinder>
-      <!-- Spalle larghe -->
+      <!-- Spalle -->
       <a-box position="0 1.3 0" width="0.66" height="0.16" depth="0.24" color="#0f172a"></a-box>
-      
-      <!-- 4. Collo -->
+      <!-- Collo -->
       <a-cylinder position="0 1.44 0" radius="0.06" height="0.12" color="#94a3b8"></a-cylinder>
-      
-      <!-- 5. Testa sagomata -->
+      <!-- Testa -->
       <a-box id="boss-head" position="0 1.68 0" width="0.36" height="0.42" depth="0.32" color="#1e293b">
-        <!-- Faccia frontale per la foto del capo -->
         <a-plane id="boss-face" position="0 0 0.165" width="0.32" height="0.32" color="#ffffff"></a-plane>
       </a-box>
     </a-entity>
@@ -100,9 +94,9 @@
     <a-sphere id="glove-left" radius="0.09" color="#2563eb" position="-0.3 1.2 -1.0" visible="false"></a-sphere>
     <a-sphere id="glove-right" radius="0.09" color="#dc2626" position="0.3 1.2 -1.0" visible="false"></a-sphere>
 
-    <!-- Interfaccia 3D del Punteggio -->
-    <a-text id="score-text" value="PUNTI: 0" position="0 2.4 -1.7" align="center" color="#ffffff" width="4" font="mozillavr"></a-text>
-    <a-text id="feedback-text" value="" position="0 2.1 -1.7" align="center" color="#fbbf24" scale="1.4 1.4 1.4" visible="false" font="mozillavr"></a-text>
+    <!-- Interfaccia 3D del Punteggio e Livello -->
+    <a-text id="score-text" value="LIVELLO 1" position="0 2.4 -1.7" align="center" color="#ffffff" width="4" font="mozillavr"></a-text>
+    <a-text id="feedback-text" value="" position="0 1.9 -1.7" align="center" color="#fbbf24" scale="1.4 1.4 1.4" visible="false" font="mozillavr"></a-text>
 
     <!-- Camera VR -->
     <a-entity camera look-controls position="0 1.6 0"></a-entity>
@@ -121,16 +115,27 @@
     const virtualBg = document.getElementById('virtual-bg');
     
     let uploadedImageSrc = "";
-    let score = 0;
-    let canHit = true;
     let audioCtx = null;
 
-    // Posizioni smorzate per evitare tremolii (Filtro Lerp)
+    // --- VARIABILI DI GIOCO ---
+    let currentLevel = 1;      // 1: Gelati, 2: Anatre, 3: Boss, 4: Vittoria
+    let score = 0;             // Punti totali
+    let levelScore = 0;        // Punti accumulati nel livello corrente
+    const targetScore = 8;     // Quanti oggetti colpire per passare il livello (8 è ottimo)
+    const bossHP = 10;         // Quanti pugni servono per mandare a terra il Boss
+    
+    let activeObjects = [];    // Lista degli oggetti volanti/cadenti attivi
+    let gameActive = false;
+    let spawnTimer = 0;
+    let lastTime = 0;
+    let canHitBoss = true;
+
+    // Posizioni smorzate per eliminare i tremolii (Filtro Lerp)
     let gloveLeftPos = { x: -0.3, y: 1.2, z: -1.0 };
     let gloveRightPos = { x: 0.3, y: 1.2, z: -1.0 };
-    const LERP_FACTOR = 0.35; // Regola la fluidità (più basso = più fluido, più alto = più immediato)
+    const LERP_FACTOR = 0.35;
 
-    // Posizioni del frame precedente per calcolare la velocità del pugno
+    // Posizioni precedenti per calcolare la velocità
     let lastLeftPos = { x: 0, y: 0 };
     let lastRightPos = { x: 0, y: 0 };
 
@@ -155,31 +160,29 @@
         return;
       }
 
-      // Inizializza l'audio del browser
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-      // Applica la foto sul viso del manichino
       document.getElementById('boss-face').setAttribute('material', 'src', uploadedImageSrc);
 
-      // Gestione dello sfondo trasparente (Passthrough) o virtuale
       if (transparentToggle.checked) {
-        virtualBg.setAttribute('visible', 'false'); // Nasconde cielo e pavimento virtuale
-        videoElement.style.display = 'block';       // Mostra la videocamera reale sullo sfondo
+        virtualBg.setAttribute('visible', 'false');
+        videoElement.style.display = 'block';
       } else {
         virtualBg.setAttribute('visible', 'true');
-        videoElement.style.display = 'none';        // Videocamera nascosta (usata solo in background per tracciare)
+        videoElement.style.display = 'none';
       }
 
       setupScreen.style.display = 'none';
       gameScene.style.display = 'block';
 
-      // Avvia fotocamera (usa 'environment' per quella posteriore, utile in VR)
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment', width: 640, height: 480 }
         });
         videoElement.srcObject = stream;
-        videoElement.addEventListener('loadeddata', startHandTracking);
+        videoElement.addEventListener('loadeddata', () => {
+          startHandTracking();
+          startGameLoop();
+        });
       } catch (err) {
         alert("Impossibile accedere alla fotocamera: " + err.message);
       }
@@ -205,7 +208,226 @@
       osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    // Configurazione MediaPipe Hands
+    // ================= LOOP DI SPAWN E MOVIMENTO OGGETTI (LIVELLI 1 e 2) =================
+    function startGameLoop() {
+      gameActive = true;
+      lastTime = performance.now();
+      updateStatusText();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function gameLoop(time) {
+      if (!gameActive) return;
+
+      const dt = (time - lastTime) / 1000;
+      lastTime = time;
+
+      // Genera oggetti solo nei livelli 1 (Gelati) e 2 (Anatre)
+      if (currentLevel === 1 || currentLevel === 2) {
+        spawnTimer += dt;
+        const spawnInterval = currentLevel === 1 ? 1.4 : 1.1; // Le anatre spawnano più velocemente
+        if (spawnTimer >= spawnInterval) {
+          spawnTimer = 0;
+          spawnObject();
+        }
+        updateMovingObjects(dt);
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Genera l'entità 3D al volo
+    function spawnObject() {
+      const scene = document.querySelector('a-scene');
+      const id = 'obj-' + Date.now();
+      const entity = document.createElement('a-entity');
+      entity.setAttribute('id', id);
+
+      let x = 0, y = 0, z = -1.5;
+      let vx = 0, vy = 0;
+      let type = '';
+
+      if (currentLevel === 1) {
+        // LIVELLO 1: Gelato che cade dall'alto
+        x = (Math.random() - 0.5) * 2.2; // X casuale tra -1.1 e 1.1
+        y = 3.5;                         // In alto
+        vy = -1.2;                       // Velocità di caduta
+        type = 'icecream';
+
+        // Costruzione geometrica del gelato (Cono + Pallina rosa)
+        entity.innerHTML = `
+          <a-cone radius-bottom="0" radius-top="0.09" height="0.22" color="#f59e0b" rotation="180 0 0"></a-cone>
+          <a-sphere position="0 0.11 0" radius="0.09" color="#ec4899"></a-sphere>
+        `;
+      } else if (currentLevel === 2) {
+        // LIVELLO 2: Anatra che vola da destra a sinistra o viceversa
+        const fromLeft = Math.random() > 0.5;
+        x = fromLeft ? -2.5 : 2.5;
+        y = 1.3 + Math.random() * 0.5; // Altezza occhi casuale
+        vx = fromLeft ? 1.5 : -1.5;    // Velocità di volo
+        type = 'duck';
+
+        // Orientamento del becco basato sulla direzione di volo
+        const rotY = fromLeft ? 90 : -90;
+
+        // Costruzione geometrica dell'anatra (Corpo + Testa + Becco)
+        entity.innerHTML = `
+          <a-entity rotation="0 ${rotY} 0">
+            <a-sphere radius="0.11" color="#eab308" scale="1.2 1 1"></a-sphere>
+            <a-sphere position="0.09 0.09 0" radius="0.06" color="#eab308"></a-sphere>
+            <a-cone position="0.15 0.09 0" rotation="0 0 -90" radius-bottom="0" radius-top="0.03" height="0.05" color="#f97316"></a-cone>
+          </a-entity>
+        `;
+      }
+
+      entity.setAttribute('position', `${x} ${y} ${z}`);
+      scene.appendChild(entity);
+
+      activeObjects.push({
+        id: id,
+        element: entity,
+        type: type,
+        x: x, y: y, z: z,
+        vx: vx, vy: vy
+      });
+    }
+
+    // Aggiorna posizioni degli oggetti e controlla le collisioni 3D
+    function updateMovingObjects(dt) {
+      const remaining = [];
+
+      for (let obj of activeObjects) {
+        obj.x += obj.vx * dt;
+        obj.y += obj.vy * dt;
+
+        obj.element.setAttribute('position', `${obj.x} ${obj.y} ${obj.z}`);
+
+        // Controllo collisione 3D con entrambi i guantoni (Raggio 35 cm)
+        let hit = false;
+        if (checkCollision(obj, gloveLeftPos) || checkCollision(obj, gloveRightPos)) {
+          hit = true;
+          triggerObjectHit(obj);
+        }
+
+        // Controllo se l'oggetto è andato fuori dai limiti
+        let outOfBounds = false;
+        if (obj.type === 'icecream' && obj.y < 0.2) {
+          outOfBounds = true;
+        } else if (obj.type === 'duck' && Math.abs(obj.x) > 2.7) {
+          outOfBounds = true;
+        }
+
+        if (hit || outOfBounds) {
+          if (obj.element.parentNode) {
+            obj.element.parentNode.removeChild(obj.element);
+          }
+        } else {
+          remaining.push(obj);
+        }
+      }
+
+      activeObjects = remaining;
+    }
+
+    function checkCollision(obj, glove) {
+      const dx = obj.x - glove.x;
+      const dy = obj.y - glove.y;
+      const dz = obj.z - glove.z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      return dist < 0.35; // Distanza di impatto
+    }
+
+    function triggerObjectHit(obj) {
+      playPunchSound();
+      levelScore++;
+      score += 10;
+      updateStatusText();
+
+      // Feedback visivo rapido a schermo
+      const feedback = document.getElementById('feedback-text');
+      feedback.setAttribute('value', obj.type === 'icecream' ? "YUMMY!" : "QUACK!");
+      feedback.setAttribute('visible', 'true');
+      setTimeout(() => {
+        feedback.setAttribute('visible', 'false');
+      }, 500);
+
+      // Passaggio di livello
+      if (levelScore >= targetScore) {
+        nextLevel();
+      }
+    }
+
+    // ================= PROGRESSIONE LIVELLI E STATI DI GIOCO =================
+    function updateStatusText() {
+      const scoreText = document.getElementById('score-text');
+      if (currentLevel === 1) {
+        scoreText.setAttribute('value', `LV1 - GELATI COLPITI: ${levelScore}/${targetScore}\nPUNTI TOTALI: ${score}`);
+      } else if (currentLevel === 2) {
+        scoreText.setAttribute('value', `LV2 - ANATRE COLPITE: ${levelScore}/${targetScore}\nPUNTI TOTALI: ${score}`);
+      } else if (currentLevel === 3) {
+        scoreText.setAttribute('value', `VITA DEL CAPO: ${bossHP - levelScore} HP\nPUNTI TOTALI: ${score}`);
+      } else if (currentLevel === 4) {
+        scoreText.setAttribute('value', `VITTORIA FINALE!\nPUNTI TOTALI: ${score}`);
+      }
+    }
+
+    function nextLevel() {
+      // Pulisce tutti gli oggetti ancora a schermo
+      for (let obj of activeObjects) {
+        if (obj.element.parentNode) {
+          obj.element.parentNode.removeChild(obj.element);
+        }
+      }
+      activeObjects = [];
+
+      currentLevel++;
+      levelScore = 0;
+      gameActive = false;
+
+      const feedback = document.getElementById('feedback-text');
+      feedback.setAttribute('scale', '1.8 1.8 1.8');
+
+      if (currentLevel === 2) {
+        feedback.setAttribute('color', '#10b981');
+        feedback.setAttribute('value', "LIVELLO 1 SUPERATO!\nLIVELLO 2: ANATRE FLY!");
+        feedback.setAttribute('visible', 'true');
+        
+        setTimeout(() => {
+          feedback.setAttribute('visible', 'false');
+          feedback.setAttribute('scale', '1.4 1.4 1.4');
+          feedback.setAttribute('color', '#fbbf24');
+          startGameLoop();
+        }, 3000);
+
+      } else if (currentLevel === 3) {
+        feedback.setAttribute('color', '#ef4444');
+        feedback.setAttribute('value', "LIVELLO 2 SUPERATO!\nBOSS FINALE IN ARRIVO!");
+        feedback.setAttribute('visible', 'true');
+        
+        setTimeout(() => {
+          feedback.setAttribute('visible', 'false');
+          feedback.setAttribute('scale', '1.4 1.4 1.4');
+          feedback.setAttribute('color', '#fbbf24');
+          
+          // Mostriamo il manichino del Boss!
+          document.getElementById('boss').setAttribute('visible', 'true');
+          updateStatusText();
+          gameActive = true;
+        }, 3000);
+
+      } else if (currentLevel === 4) {
+        // Vittoria! Il capo va KO!
+        feedback.setAttribute('color', '#10b981');
+        feedback.setAttribute('value', "IL CAPO E' KO!\nHAI VINTO IL MATCH!");
+        feedback.setAttribute('visible', 'true');
+        updateStatusText();
+
+        // Effetto KO comico: ruota il manichino di 90 gradi facendolo "sdraiare" di lato
+        document.getElementById('boss').setAttribute('animation', 'property: rotation; to: 0 0 90; dur: 800; easing: easeOutBounce; fill: forwards;');
+      }
+    }
+
+    // ================= TRACCIAMENTO DELLE MANI (MEDIAPIPE) =================
     function startHandTracking() {
       const hands = new Hands({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -227,7 +449,6 @@
       predict();
     }
 
-    // Processamento coordinate mani
     function onHandResults(results) {
       const gloveLeft = document.getElementById('glove-left');
       const gloveRight = document.getElementById('glove-right');
@@ -235,31 +456,33 @@
       gloveLeft.setAttribute('visible', 'false');
       gloveRight.setAttribute('visible', 'false');
 
+      if (!gameActive && currentLevel !== 3) return; // Non renderizza guantoni tra le transizioni dei livelli
+
       if (results.multiHandLandmarks && results.multiHandedness) {
         for (let i = 0; i < results.multiHandLandmarks.length; i++) {
           const landmarks = results.multiHandLandmarks[i];
-          const handedness = results.multiHandedness[i].label; // "Left" o "Right"
-          const handPos = landmarks[9]; // Usiamo il nodo centrale del palmo
+          const handedness = results.multiHandedness[i].label;
+          const handPos = landmarks[9];
 
-          // Calcolo X: Gestione opzione specchio per PC
+          // Calcolo asse X (Specchio per PC)
           let rawX = handPos.x;
           if (mirrorToggle.checked) {
-            rawX = 1 - handPos.x; // Inverte l'asse X per riflettere i movimenti reali
+            rawX = 1 - handPos.x;
           }
           const targetX = (rawX - 0.5) * 3;
 
-          // Calcolo Y: Asse verticale
+          // Calcolo asse Y
           const targetY = (0.5 - handPos.y) * 2 + 1.6;
 
-          // Calcolo Z (Distanza visuale): Stimato in base alla dimensione della mano
+          // Calcolo asse Z (profondità stimata)
           const dx = landmarks[0].x - landmarks[9].x;
           const dy = landmarks[0].y - landmarks[9].y;
           const handSize = Math.sqrt(dx*dx + dy*dy);
           const clampedSize = Math.max(0.08, Math.min(0.22, handSize));
-          const normalizedSize = (clampedSize - 0.08) / (0.22 - 0.08); 
-          const targetZ = -1.7 + (normalizedSize * 0.9); // Da -1.7 (disteso) a -0.8 (vicino)
+          const normalizedSize = (clampedSize - 0.08) / (0.22 - 0.08);
+          const targetZ = -1.7 + (normalizedSize * 0.9);
 
-          // Applica il filtro Lerp (smorzamento) per eliminare il tremolio
+          // Filtro smorzamento (Lerp)
           const activeGlove = (handedness === 'Left') ? gloveLeft : gloveRight;
           let smoothPos = (handedness === 'Left') ? gloveLeftPos : gloveRightPos;
 
@@ -270,42 +493,39 @@
           activeGlove.setAttribute('visible', 'true');
           activeGlove.setAttribute('position', `${smoothPos.x} ${smoothPos.y} ${smoothPos.z}`);
 
-          // Calcolo della velocità (X e Y) per capire se è stato sferrato un pugno rapido
+          // Calcola la velocità del movimento (per il rilevamento dei pugni)
           const lastPos = (handedness === 'Left') ? lastLeftPos : lastRightPos;
           const vx = targetX - lastPos.x;
           const vy = targetY - lastPos.y;
           const speed = Math.sqrt(vx*vx + vy*vy);
 
-          // Salva posizione attuale per il prossimo calcolo
           if (handedness === 'Left') {
             lastLeftPos = { x: targetX, y: targetY };
           } else {
             lastRightPos = { x: targetX, y: targetY };
           }
 
-          // NUOVO SISTEMA DI COLLISIONE: Basato su sovrapposizione 2D + Velocità pugno
-          // La testa del manichino è a coordinate X=0, Y=1.68
-          if (canHit && speed > 0.12) { // Soglia di velocità del pugno
+          // RILEVAMENTO IMPATTO SUL BOSS (Attivo solo al Livello 3)
+          if (currentLevel === 3 && gameActive && canHitBoss && speed > 0.12) {
             const distToHead = Math.sqrt(Math.pow(targetX - 0, 2) + Math.pow(targetY - 1.68, 2));
-            
-            // Se il pugno è scagliato velocemente entro un raggio di 42cm dal viso
             if (distToHead < 0.42) {
-              triggerHit();
+              triggerBossHit();
             }
           }
         }
       }
     }
 
-    // Registra il colpo andato a segno
-    function triggerHit() {
-      canHit = false;
-      score++;
-      document.getElementById('score-text').setAttribute('value', `PUNTI: ${score}`);
+    // Gestione del pugno andato a segno sul Boss (Livello 3)
+    function triggerBossHit() {
+      canHitBoss = false;
+      levelScore++;
+      score += 50; // I colpi sul boss danno più punti
+      updateStatusText();
       
       playPunchSound();
 
-      // Animazione di impatto: La testa del manichino diventa rossa e trema
+      // Animazione testa rossa + vibrazione
       const bossHead = document.getElementById('boss-head');
       bossHead.setAttribute('color', '#ef4444');
 
@@ -316,7 +536,7 @@
           clearInterval(shakeInterval);
           bossHead.setAttribute('position', originalPos);
           bossHead.setAttribute('color', '#1e293b');
-          canHit = true;
+          canHitBoss = true;
         } else {
           const offsetX = (Math.random() - 0.5) * 0.12;
           const offsetY = 1.68 + (Math.random() - 0.5) * 0.12;
@@ -325,7 +545,6 @@
         }
       }, 50);
 
-      // Scritta flash sullo schermo
       const feedback = document.getElementById('feedback-text');
       const textOptions = ["SBAM!", "STRIKE!", "K.O.!", "POW!", "BOOM!"];
       const randomText = textOptions[Math.floor(Math.random() * textOptions.length)];
@@ -334,6 +553,11 @@
       setTimeout(() => {
         feedback.setAttribute('visible', 'false');
       }, 600);
+
+      // Sconfitta del Boss
+      if (levelScore >= bossHP) {
+        nextLevel();
+      }
     }
   </script>
 </body>
