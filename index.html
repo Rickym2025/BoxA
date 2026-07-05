@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Boss Boxing</title>
+  
+  <!-- Tailwind CSS per una bella interfaccia di caricamento 2D -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- A-Frame per il motore 3D e la modalità VR Cardboard -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  
+  <!-- MediaPipe Hands per il tracciamento delle mani -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans overflow-hidden">
+
+  <!-- ================= SCHERMATA DI PREPARAZIONE (2D) ================= -->
+  <div id="setup-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-slate-900">
+    <div class="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700 text-center">
+      <h1 class="text-3xl font-black text-rose-500 mb-2">VR BOSS BOXING</h1>
+      <p class="text-slate-400 text-sm mb-6">Un regalo terapeutico. Carica la foto, metti il visore e colpisci!</p>
+      
+      <!-- Box Caricamento Foto -->
+      <div class="border-2 border-dashed border-slate-600 rounded-xl p-4 mb-6 hover:border-rose-500 transition-colors">
+        <label class="block cursor-pointer">
+          <span class="text-sm text-slate-300 block mb-2 font-semibold">Foto del "Capo" (Solo Viso):</span>
+          <input type="file" id="image-upload" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-rose-500 file:text-white hover:file:bg-rose-600 cursor-pointer" />
+        </label>
+        <!-- Anteprima della faccia -->
+        <div class="mt-4 flex justify-center">
+          <img id="preview-img" class="w-24 h-24 object-cover rounded-full border-4 border-rose-500 hidden" alt="Anteprima" />
+        </div>
+      </div>
+
+      <!-- Pulsante Avvia -->
+      <button id="start-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-rose-900/30">
+        INIZIA ALLENAMENTO
+      </button>
+      
+      <p class="text-xs text-slate-500 mt-4">Nota: Verrà richiesto l'accesso alla fotocamera posteriore per tracciare i tuoi pugni.</p>
+    </div>
+  </div>
+
+  <!-- Elemento video nascosto per catturare la fotocamera (deve essere nel DOM) -->
+  <video id="webcam" playsinline autoplay muted style="position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1;"></video>
+
+  <!-- ================= SCENA 3D VR (A-FRAME) ================= -->
+  <!-- vr-mode-ui forza il pulsante VR visibile su mobile -->
+  <a-scene id="game-scene" vr-mode-ui="enabled: true" style="display: none;">
+    <!-- Asset Manager per caricare dinamicamente l'immagine del capo -->
+    <a-assets>
+      <img id="boss-texture" src="" crossorigin="anonymous">
+    </a-assets>
+
+    <!-- Ambiente (Cielo scuro e pavimento da ring) -->
+    <a-sky color="#0f172a"></a-sky>
+    <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#1e293b"></a-plane>
+    <a-grid color="#334155" width="20" height="20" depth="20"></a-grid>
+
+    <!-- L'Avversario (Il Boss) posizionato a 1.8 metri davanti al giocatore -->
+    <a-entity id="boss" position="0 0 -1.8">
+      <!-- Corpo/Busto -->
+      <a-cylinder position="0 0.8 0" radius="0.3" height="1.0" color="#ef4444"></a-cylinder>
+      <!-- Testa -->
+      <a-box id="boss-head" position="0 1.5 0" width="0.4" height="0.4" depth="0.4" color="#cbd5e1">
+        <!-- Faccia frontale dove applicheremo la foto del capo -->
+        <a-plane id="boss-face" position="0 0 0.21" width="0.38" height="0.38" color="#ffffff"></a-plane>
+      </a-box>
+    </a-entity>
+
+    <!-- Guanti Virtuali (Sfere che seguono le tue mani) -->
+    <a-sphere id="glove-left" radius="0.08" color="#3b82f6" position="-0.3 1.2 -1.0" visible="false"></a-sphere>
+    <a-sphere id="glove-right" radius="0.08" color="#ef4444" position="0.3 1.2 -1.0" visible="false"></a-sphere>
+
+    <!-- Testi 3D (Punteggio e Feedback) -->
+    <a-text id="score-text" value="PUNTI: 0" position="0 2.3 -1.8" align="center" color="#ffffff" width="4" font="mozillavr"></a-text>
+    <a-text id="feedback-text" value="" position="0 2.0 -1.8" align="center" color="#facc15" scale="1.5 1.5 1.5" visible="false" font="mozillavr"></a-text>
+
+    <!-- Camera con Giroscopio integrato per guardarsi intorno -->
+    <a-entity camera look-controls position="0 1.6 0"></a-entity>
+  </a-scene>
+
+  <!-- ================= LOGICA DI GIOCO (JS) ================= -->
+  <script>
+    const imageUpload = document.getElementById('image-upload');
+    const previewImg = document.getElementById('preview-img');
+    const startBtn = document.getElementById('start-btn');
+    const setupScreen = document.getElementById('setup-screen');
+    const gameScene = document.getElementById('game-scene');
+    const videoElement = document.getElementById('webcam');
+    
+    let uploadedImageSrc = "";
+    let score = 0;
+    let lastLeftPos = { x: 0, y: 0, z: 0 };
+    let lastRightPos = { x: 0, y: 0, z: 0 };
+    let canHit = true;
+    let audioCtx = null;
+
+    // Gestione caricamento immagine
+    imageUpload.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          uploadedImageSrc = event.target.result;
+          previewImg.src = uploadedImageSrc;
+          previewImg.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Avvio del gioco
+    startBtn.addEventListener('click', async function() {
+      if (!uploadedImageSrc) {
+        alert("Per favore, carica prima una foto del capo!");
+        return;
+      }
+
+      // Sblocca l'audio del browser su mobile (richiede interazione utente)
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Applica la foto sul viso del boss
+      document.getElementById('boss-face').setAttribute('material', 'src', uploadedImageSrc);
+
+      // Nascondi schermata 2D e mostra scena 3D
+      setupScreen.style.display = 'none';
+      gameScene.style.display = 'block';
+
+      // Richiedi fotocamera posteriore ed avvia il tracciamento
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: 640, height: 480 }
+        });
+        videoElement.srcObject = stream;
+        videoElement.addEventListener('loadeddata', startHandTracking);
+      } catch (err) {
+        alert("Errore nell'accesso alla fotocamera posteriore: " + err.message);
+      }
+    });
+
+    // Generatore procedurale di suono del pugno (8-bit synth retro, autonomo)
+    function playPunchSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.15);
+      
+      gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    }
+
+    // Configurazione e Avvio MediaPipe Hands
+    function startHandTracking() {
+      const hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+
+      hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+      });
+
+      hands.onResults(onHandResults);
+
+      // Ciclo continuo di analisi dei frame
+      async function predict() {
+        await hands.send({ image: videoElement });
+        requestAnimationFrame(predict);
+      }
+      predict();
+    }
+
+    // Elaborazione delle mani tracciate
+    function onHandResults(results) {
+      const gloveLeft = document.getElementById('glove-left');
+      const gloveRight = document.getElementById('glove-right');
+
+      gloveLeft.setAttribute('visible', 'false');
+      gloveRight.setAttribute('visible', 'false');
+
+      if (results.multiHandLandmarks && results.multiHandedness) {
+        for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+          const landmarks = results.multiHandLandmarks[i];
+          const handedness = results.multiHandedness[i].label; // "Left" o "Right"
+
+          // Usiamo il nodo 9 (base del dito medio) come centro della mano
+          const handPos = landmarks[9];
+
+          // Mappiamo X dall'immagine (0 a 1) allo spazio 3D di A-Frame (da -1.5 a 1.5)
+          const targetX = (handPos.x - 0.5) * 3;
+          // Mappiamo Y (inversa rispetto al 3D) ad altezza pugno (da 0.5 a 2.5)
+          const targetY = (0.5 - handPos.y) * 2 + 1.5;
+
+          // Stimiamo la distanza Z in base alla grandezza della mano nell'immagine
+          // Calcoliamo la distanza tra il polso (0) e la base del dito medio (9)
+          const dx = landmarks[0].x - landmarks[9].x;
+          const dy = landmarks[0].y - landmarks[9].y;
+          const handSize = Math.sqrt(dx*dx + dy*dy);
+
+          // Più la mano è lontana (pugno sferrato), più appare piccola nell'inquadratura.
+          const clampedSize = Math.max(0.08, Math.min(0.22, handSize));
+          const normalizedSize = (clampedSize - 0.08) / (0.22 - 0.08); // 0 (lontano) a 1 (vicino)
+          
+          // Z varia da -1.8 (esteso) a -0.8 (vicino a noi)
+          const targetZ = -1.8 + (normalizedSize * 1.0);
+
+          // Seleziona il guanto corretto
+          const activeGlove = (handedness === 'Left') ? gloveLeft : gloveRight;
+          activeGlove.setAttribute('visible', 'true');
+          activeGlove.setAttribute('position', `${targetX} ${targetY} ${targetZ}`);
+
+          // Calcola la velocità dello spostamento per rilevare la forza del pugno
+          const lastPos = (handedness === 'Left') ? lastLeftPos : lastRightPos;
+          const vx = targetX - lastPos.x;
+          const vy = targetY - lastPos.y;
+          const vz = targetZ - lastPos.z;
+          const speed = Math.sqrt(vx*vx + vy*vy + vz*vz);
+
+          // Salva posizione attuale
+          if (handedness === 'Left') {
+            lastLeftPos = { x: targetX, y: targetY, z: targetZ };
+          } else {
+            lastRightPos = { x: targetX, y: targetY, z: targetZ };
+          }
+
+          // Rilevamento collisione con la testa del boss (situata a X=0, Y=1.5, Z=-1.8)
+          if (canHit && targetZ < -1.4) {
+            const distToFaceX = Math.abs(targetX - 0);
+            const distToFaceY = Math.abs(targetY - 1.5);
+
+            // Se la mano è vicina alla faccia ed ha una velocità minima (movimento rapido)
+            if (distToFaceX < 0.35 && distToFaceY < 0.35 && speed > 0.07) {
+              triggerHit();
+            }
+          }
+        }
+      }
+    }
+
+    // Gestione del pugno andato a segno
+    function triggerHit() {
+      canHit = false;
+      score++;
+      document.getElementById('score-text').setAttribute('value', `PUNTI: ${score}`);
+      
+      playPunchSound();
+
+      // Animazione di impatto: Cambia colore e agita la testa del boss
+      const bossHead = document.getElementById('boss-head');
+      bossHead.setAttribute('color', '#ef4444');
+
+      let shakeCount = 0;
+      const originalPos = "0 1.5 0";
+      const shakeInterval = setInterval(() => {
+        if (shakeCount > 5) {
+          clearInterval(shakeInterval);
+          bossHead.setAttribute('position', originalPos);
+          bossHead.setAttribute('color', '#cbd5e1');
+          canHit = true;
+        } else {
+          const offsetX = (Math.random() - 0.5) * 0.15;
+          const offsetY = 1.5 + (Math.random() - 0.5) * 0.15;
+          bossHead.setAttribute('position', `${offsetX} ${offsetY} 0`);
+          shakeCount++;
+        }
+      }, 50);
+
+      // Scritta a schermo tipo fumetto
+      const feedback = document.getElementById('feedback-text');
+      const textOptions = ["SBAM!", "STRIKE!", "K.O.!", "POW!", "BOOM!"];
+      const randomText = textOptions[Math.floor(Math.random() * textOptions.length)];
+      feedback.setAttribute('value', randomText);
+      feedback.setAttribute('visible', 'true');
+      setTimeout(() => {
+        feedback.setAttribute('visible', 'false');
+      }, 700);
+    }
+  </script>
+</body>
+</html>
