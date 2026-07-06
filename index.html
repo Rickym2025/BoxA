@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VR Boss Boxing - Arcade Edition</title>
+  <title>VR Boss Boxing - Gym & Arcade 10 Levels</title>
   
   <!-- Tailwind CSS per l'interfaccia -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,7 +20,7 @@
   <div id="setup-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-slate-950">
     <div class="max-w-md w-full bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-800 text-center">
       <h1 class="text-3xl font-black text-rose-500 mb-1 tracking-wider">VR BOSS BOXING</h1>
-      <p class="text-slate-400 text-xs mb-6">Completa i livelli e metti KO il tuo capo!</p>
+      <p class="text-slate-400 text-xs mb-6">10 Livelli di Allenamento Cardio Intenso</p>
       
       <!-- Upload Foto -->
       <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 mb-5 hover:border-rose-500 transition-colors bg-slate-950/50">
@@ -40,13 +40,13 @@
         <!-- Toggle Specchio (PC) -->
         <label class="flex items-center space-x-3 cursor-pointer">
           <input type="checkbox" id="mirror-toggle" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-800 border-slate-700" checked>
-          <span class="text-xs text-slate-300 font-medium">Specchia comandi <b class="text-rose-400">(Consigliato per PC / Webcam frontale)</b></span>
+          <span class="text-xs text-slate-300 font-medium">Specchia comandi <b class="text-rose-400">(Consigliato per PC / Webcam)</b></span>
         </label>
 
         <!-- Toggle Sfondo Trasparente -->
         <label class="flex items-center space-x-3 cursor-pointer">
           <input type="checkbox" id="transparent-toggle" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-800 border-slate-700" checked>
-          <span class="text-xs text-slate-300 font-medium">Sfondo Trasparente <b class="text-emerald-400">(Vedi la tua stanza reale nel visore)</b></span>
+          <span class="text-xs text-slate-300 font-medium">Sfondo Trasparente <b class="text-emerald-400">(Vedi la stanza nel visore)</b></span>
         </label>
       </div>
 
@@ -72,7 +72,6 @@
     <a-grid color="#334155" width="20" height="20" opacity="0.4"></a-grid>
 
     <!-- ================= IL MANICHINO DA BOXE (BOB DUMMY) ================= -->
-    <!-- Inizialmente nascosto, apparirà solo al livello 3 -->
     <a-entity id="boss" position="0 0 -1.7" visible="false">
       <!-- Base pesante -->
       <a-cylinder position="0 0.08 0" radius="0.45" height="0.16" color="#334155"></a-cylinder>
@@ -84,19 +83,27 @@
       <a-box position="0 1.3 0" width="0.66" height="0.16" depth="0.24" color="#0f172a"></a-box>
       <!-- Collo -->
       <a-cylinder position="0 1.44 0" radius="0.06" height="0.12" color="#94a3b8"></a-cylinder>
+      
       <!-- Testa -->
       <a-box id="boss-head" position="0 1.68 0" width="0.36" height="0.42" depth="0.32" color="#1e293b">
         <a-plane id="boss-face" position="0 0 0.165" width="0.32" height="0.32" color="#ffffff"></a-plane>
       </a-box>
+
+      <!-- FUMETTO PARLANTE DEL BOSS -->
+      <a-entity id="boss-bubble" position="0 2.1 0" visible="false">
+        <a-plane width="1.4" height="0.45" color="#ffffff" opacity="0.95"></a-plane>
+        <a-text id="boss-bubble-text" value="" color="#0f172a" width="3" align="center" position="0 0 0.01" font="mozillavr"></a-text>
+      </a-entity>
     </a-entity>
 
     <!-- ================= I GUANTI VIRTUALI ================= -->
     <a-sphere id="glove-left" radius="0.09" color="#2563eb" position="-0.3 1.2 -1.0" visible="false"></a-sphere>
     <a-sphere id="glove-right" radius="0.09" color="#dc2626" position="0.3 1.2 -1.0" visible="false"></a-sphere>
 
-    <!-- Interfaccia 3D del Punteggio e Livello -->
-    <a-text id="score-text" value="LIVELLO 1" position="0 2.4 -1.7" align="center" color="#ffffff" width="4" font="mozillavr"></a-text>
-    <a-text id="feedback-text" value="" position="0 1.9 -1.7" align="center" color="#fbbf24" scale="1.4 1.4 1.4" visible="false" font="mozillavr"></a-text>
+    <!-- Interfaccia 3D delle Statistiche Palestra -->
+    <a-text id="score-text" value="INIZIALIZZAZIONE..." position="0 2.4 -1.7" align="center" color="#ffffff" width="4" font="mozillavr"></a-text>
+    <a-text id="gym-text" value="Pugni: 0 | KCAL: 0.0 | Tempo: 0s" position="0 2.2 -1.7" align="center" color="#10b981" width="3" font="mozillavr"></a-text>
+    <a-text id="feedback-text" value="" position="0 1.8 -1.7" align="center" color="#fbbf24" scale="1.4 1.4 1.4" visible="false" font="mozillavr"></a-text>
 
     <!-- Camera VR -->
     <a-entity camera look-controls position="0 1.6 0"></a-entity>
@@ -117,18 +124,47 @@
     let uploadedImageSrc = "";
     let audioCtx = null;
 
+    // --- STRUTTURA DEI 10 LIVELLI ---
+    const LEVEL_CONFIGS = [
+      { name: "LV1: CADUTA GELATI", target: 8, type: "icecream", desc: "Sotto la pioggia di calorie!" },
+      { name: "LV2: ANATRE AL VOLO", target: 8, type: "duck", desc: "Prendi la mira di lato!" },
+      { name: "LV3: TENNIS FRONTALE", target: 8, type: "tennis", desc: "Palle in faccia! Velocità di reazione!" },
+      { name: "LV4: CIAMBELLE DIABOLICHE", target: 8, type: "donut", desc: "Ciambelle rotanti dall'alto!" },
+      { name: "LV5: BASKET RIMBALZANTE", target: 8, type: "basketball", desc: "Rimbalzi ritmici! Colpisci al volo!" },
+      { name: "LV6: PIPISTRELLI ZIG-ZAG", target: 8, type: "bat", desc: "Movimenti ondulatori rapidi!" },
+      { name: "LV7: SUSHI FRONTALE", target: 8, type: "sushi", desc: "Evita il sushi in faccia!" },
+      { name: "LV8: CAFFE' DIAGONALE", target: 8, type: "coffee", desc: "Le tazze volano dal basso a razzo!" },
+      { name: "LV9: SVEGLIE MATTUTINE", target: 8, type: "clock", desc: "Distruggi il lunedì mattina!" },
+      { name: "LV10: MATCH CON IL CAPO", target: 12, type: "boss", desc: "Il Capo si muove e schiva i tuoi pugni!" }
+    ];
+
     // --- VARIABILI DI GIOCO ---
-    let currentLevel = 1;      // 1: Gelati, 2: Anatre, 3: Boss, 4: Vittoria
-    let score = 0;             // Punti totali
-    let levelScore = 0;        // Punti accumulati nel livello corrente
-    const targetScore = 8;     // Quanti oggetti colpire per passare il livello (8 è ottimo)
-    const bossHP = 10;         // Quanti pugni servono per mandare a terra il Boss
+    let currentLevel = 1;      
+    let score = 0;             
+    let levelScore = 0;        
+    let punchesThrown = 0;
+    let caloriesBurned = 0;
+    let trainingStartTime = 0;
+    let bossX = 0;             // Posizione X dinamica del boss per schivare
     
-    let activeObjects = [];    // Lista degli oggetti volanti/cadenti attivi
+    let activeObjects = [];    
     let gameActive = false;
     let spawnTimer = 0;
     let lastTime = 0;
     let canHitBoss = true;
+
+    // Frasi del boss per istigare il giocatore
+    const bossPhrases = [
+      "Se mi colpisci ti tolgo le ferie!",
+      "Straordinari non pagati per un mese!",
+      "Hai finito quel report di ieri?!",
+      "La tua valutazione sarà un disastro!",
+      "Niente smart working da lunedì!",
+      "Ti sposto la scrivania vicino ai bagni!",
+      "Dì addio al tuo weekend!",
+      "Questa insolenza ti costerà il bonus!",
+      "C'è traffico? Dovevi svegliarti prima!"
+    ];
 
     // Posizioni smorzate per eliminare i tremolii (Filtro Lerp)
     let gloveLeftPos = { x: -0.3, y: 1.2, z: -1.0 };
@@ -208,10 +244,11 @@
       osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    // ================= LOOP DI SPAWN E MOVIMENTO OGGETTI (LIVELLI 1 e 2) =================
+    // ================= LOOP DI SPAWN E MOVIMENTO OGGETTI (LIVELLI 1-9) =================
     function startGameLoop() {
       gameActive = true;
       lastTime = performance.now();
+      trainingStartTime = performance.now();
       updateStatusText();
       requestAnimationFrame(gameLoop);
     }
@@ -222,21 +259,37 @@
       const dt = (time - lastTime) / 1000;
       lastTime = time;
 
-      // Genera oggetti solo nei livelli 1 (Gelati) e 2 (Anatre)
-      if (currentLevel === 1 || currentLevel === 2) {
+      // Aggiorna il Timer e le Calorie della palestra in alto
+      const elapsedSec = Math.floor((performance.now() - trainingStartTime) / 1000);
+      document.getElementById('gym-text').setAttribute(
+        'value', 
+        `Pugni: ${punchesThrown} | KCAL: ${caloriesBurned.toFixed(1)} | Tempo: ${elapsedSec}s`
+      );
+
+      // Movimento oscillatorio del capo solo nel Livello 10
+      if (currentLevel === 10) {
+        bossX = Math.sin(time * 0.0018) * 0.65; // Schivata automatica destra/sinistra di 65cm
+        document.getElementById('boss').setAttribute('position', `${bossX} 0 -1.7`);
+      }
+
+      // Se siamo nei primi 9 livelli, gestiamo lo spawn
+      if (currentLevel < 10) {
         spawnTimer += dt;
-        const spawnInterval = currentLevel === 1 ? 1.4 : 1.1; // Le anatre spawnano più velocemente
+        // Velocità di spawn incrementale ad ogni livello
+        const baseSpawnInterval = 1.5;
+        const spawnInterval = Math.max(0.7, baseSpawnInterval - (currentLevel * 0.09));
+        
         if (spawnTimer >= spawnInterval) {
           spawnTimer = 0;
           spawnObject();
         }
-        updateMovingObjects(dt);
+        updateMovingObjects(dt, time);
       }
 
       requestAnimationFrame(gameLoop);
     }
 
-    // Genera l'entità 3D al volo
+    // Genera l'entità 3D al volo con forme geometriche native
     function spawnObject() {
       const scene = document.querySelector('a-scene');
       const id = 'obj-' + Date.now();
@@ -244,40 +297,98 @@
       entity.setAttribute('id', id);
 
       let x = 0, y = 0, z = -1.5;
-      let vx = 0, vy = 0;
-      let type = '';
+      let vx = 0, vy = 0, vz = 0;
+      let type = LEVEL_CONFIGS[currentLevel - 1].type;
+      
+      // Coefficiente di velocità progressivo per livello (+15% per livello)
+      const speedMult = 1 + (currentLevel * 0.15);
 
-      if (currentLevel === 1) {
-        // LIVELLO 1: Gelato che cade dall'alto
-        x = (Math.random() - 0.5) * 2.2; // X casuale tra -1.1 e 1.1
-        y = 3.5;                         // In alto
-        vy = -1.2;                       // Velocità di caduta
-        type = 'icecream';
+      switch (type) {
+        case 'icecream': // Gelati cadenti
+          x = (Math.random() - 0.5) * 2.2;
+          y = 3.5;
+          vy = -1.1 * speedMult;
+          entity.innerHTML = `
+            <a-cone radius-bottom="0" radius-top="0.09" height="0.22" color="#f59e0b" rotation="180 0 0"></a-cone>
+            <a-sphere position="0 0.11 0" radius="0.09" color="#ec4899"></a-sphere>
+          `;
+          break;
 
-        // Costruzione geometrica del gelato (Cono + Pallina rosa)
-        entity.innerHTML = `
-          <a-cone radius-bottom="0" radius-top="0.09" height="0.22" color="#f59e0b" rotation="180 0 0"></a-cone>
-          <a-sphere position="0 0.11 0" radius="0.09" color="#ec4899"></a-sphere>
-        `;
-      } else if (currentLevel === 2) {
-        // LIVELLO 2: Anatra che vola da destra a sinistra o viceversa
-        const fromLeft = Math.random() > 0.5;
-        x = fromLeft ? -2.5 : 2.5;
-        y = 1.3 + Math.random() * 0.5; // Altezza occhi casuale
-        vx = fromLeft ? 1.5 : -1.5;    // Velocità di volo
-        type = 'duck';
+        case 'duck': // Anatre laterali
+          const fromLeft = Math.random() > 0.5;
+          x = fromLeft ? -2.5 : 2.5;
+          y = 1.3 + Math.random() * 0.5;
+          vx = fromLeft ? 1.4 * speedMult : -1.4 * speedMult;
+          entity.innerHTML = `
+            <a-entity rotation="0 ${fromLeft ? 90 : -90} 0">
+              <a-sphere radius="0.11" color="#eab308" scale="1.2 1 1"></a-sphere>
+              <a-sphere position="0.09 0.09 0" radius="0.06" color="#eab308"></a-sphere>
+              <a-cone position="0.15 0.09 0" rotation="0 0 -90" radius-bottom="0" radius-top="0.03" height="0.05" color="#f97316"></a-cone>
+            </a-entity>
+          `;
+          break;
 
-        // Orientamento del becco basato sulla direzione di volo
-        const rotY = fromLeft ? 90 : -90;
+        case 'tennis': // Palle da tennis frontali (partono da lontano, arrivano in faccia!)
+          x = (Math.random() - 0.5) * 1.5;
+          y = 1.2 + Math.random() * 0.6;
+          z = -4.0; // Molto lontano
+          vz = 1.6 * speedMult; // Si muove verso il giocatore
+          entity.innerHTML = `<a-sphere radius="0.08" color="#a3e635"></a-sphere>`;
+          break;
 
-        // Costruzione geometrica dell'anatra (Corpo + Testa + Becco)
-        entity.innerHTML = `
-          <a-entity rotation="0 ${rotY} 0">
-            <a-sphere radius="0.11" color="#eab308" scale="1.2 1 1"></a-sphere>
-            <a-sphere position="0.09 0.09 0" radius="0.06" color="#eab308"></a-sphere>
-            <a-cone position="0.15 0.09 0" rotation="0 0 -90" radius-bottom="0" radius-top="0.03" height="0.05" color="#f97316"></a-cone>
-          </a-entity>
-        `;
+        case 'donut': // Ciambelle cadenti rotanti
+          x = (Math.random() - 0.5) * 2.2;
+          y = 3.5;
+          vy = -1.2 * speedMult;
+          entity.innerHTML = `<a-torus radius="0.09" radius-tubular="0.03" color="#db2777" animation="property: rotation; to: 360 360 0; loop: true; dur: 2000"></a-torus>`;
+          break;
+
+        case 'basketball': // Palloni da basket rimbalzanti (movimento ad onda)
+          const fromL5 = Math.random() > 0.5;
+          x = fromL5 ? -2.5 : 2.5;
+          y = 1.3;
+          vx = fromL5 ? 1.3 * speedMult : -1.3 * speedMult;
+          entity.innerHTML = `<a-sphere radius="0.12" color="#f97316"></a-sphere>`;
+          break;
+
+        case 'bat': // Pipistrelli zig-zag
+          const fromL6 = Math.random() > 0.5;
+          x = fromL6 ? -2.5 : 2.5;
+          y = 1.5;
+          vx = fromL6 ? 1.5 * speedMult : -1.5 * speedMult;
+          entity.innerHTML = `
+            <a-sphere radius="0.09" color="#581c87"></a-sphere>
+            <a-plane width="0.25" height="0.08" color="#3b0764" position="0.15 0 0" rotation="0 0 15"></a-plane>
+            <a-plane width="0.25" height="0.08" color="#3b0764" position="-0.15 0 0" rotation="0 0 -15"></a-plane>
+          `;
+          break;
+
+        case 'sushi': // Sushi frontale
+          x = (Math.random() - 0.5) * 1.5;
+          y = 1.3 + Math.random() * 0.4;
+          z = -4.0;
+          vz = 1.7 * speedMult;
+          entity.innerHTML = `<a-cylinder radius="0.1" height="0.08" color="#1e293b" rotation="90 0 0"></a-cylinder>`;
+          break;
+
+        case 'coffee': // Tazze di caffè diagonali
+          x = Math.random() > 0.5 ? -2.0 : 2.0;
+          y = 0.2; // Partono dal basso
+          vx = x < 0 ? 1.3 * speedMult : -1.3 * speedMult;
+          vy = 1.1 * speedMult; // Volano verso l'alto
+          entity.innerHTML = `<a-cylinder radius="0.08" height="0.14" color="#f1f5f9"></a-cylinder>`;
+          break;
+
+        case 'clock': // Sveglie rapide cadenti
+          x = (Math.random() - 0.5) * 2.2;
+          y = 3.5;
+          vy = -1.6 * speedMult;
+          entity.innerHTML = `
+            <a-cylinder radius="0.1" height="0.06" color="#ffffff" rotation="90 0 0"></a-cylinder>
+            <a-sphere position="0.08 0.1 0" radius="0.03" color="#dc2626"></a-sphere>
+            <a-sphere position="-0.08 0.1 0" radius="0.03" color="#dc2626"></a-sphere>
+          `;
+          break;
       }
 
       entity.setAttribute('position', `${x} ${y} ${z}`);
@@ -288,32 +399,43 @@
         element: entity,
         type: type,
         x: x, y: y, z: z,
-        vx: vx, vy: vy
+        vx: vx, vy: vy, vz: vz,
+        spawnTime: performance.now() // Per formule sinusoidali (onde)
       });
     }
 
-    // Aggiorna posizioni degli oggetti e controlla le collisioni 3D
-    function updateMovingObjects(dt) {
+    // Aggiorna posizioni e controlla le collisioni 3D
+    function updateMovingObjects(dt, time) {
       const remaining = [];
 
       for (let obj of activeObjects) {
         obj.x += obj.vx * dt;
         obj.y += obj.vy * dt;
+        obj.z += obj.vz * dt;
+
+        // Effetti speciali di movimento (Rimbalzi e oscillazioni)
+        if (obj.type === 'basketball') {
+          // Rimbalzo tramite seno assoluto
+          const age = (time - obj.spawnTime) / 1000;
+          obj.y = 1.1 + Math.abs(Math.sin(age * 5)) * 0.7;
+        } else if (obj.type === 'bat') {
+          // Oscillazione continua su e giù
+          const age = (time - obj.spawnTime) / 1000;
+          obj.y = 1.5 + Math.sin(age * 8) * 0.35;
+        }
 
         obj.element.setAttribute('position', `${obj.x} ${obj.y} ${obj.z}`);
 
-        // Controllo collisione 3D con entrambi i guantoni (Raggio 35 cm)
+        // Rilevamento collisione 3D reale
         let hit = false;
         if (checkCollision(obj, gloveLeftPos) || checkCollision(obj, gloveRightPos)) {
           hit = true;
           triggerObjectHit(obj);
         }
 
-        // Controllo se l'oggetto è andato fuori dai limiti
+        // Limiti per rimozione out-of-bounds
         let outOfBounds = false;
-        if (obj.type === 'icecream' && obj.y < 0.2) {
-          outOfBounds = true;
-        } else if (obj.type === 'duck' && Math.abs(obj.x) > 2.7) {
+        if (obj.y < 0.15 || obj.y > 4.0 || Math.abs(obj.x) > 2.8 || obj.z > -0.7) {
           outOfBounds = true;
         }
 
@@ -334,45 +456,50 @@
       const dy = obj.y - glove.y;
       const dz = obj.z - glove.z;
       const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-      return dist < 0.35; // Distanza di impatto
+      return dist < 0.35; // Raggio hitbox 35cm
     }
 
     function triggerObjectHit(obj) {
       playPunchSound();
       levelScore++;
-      score += 10;
+      score += 15;
+      punchesThrown++;
+      caloriesBurned += 0.15; // Calorie palestra stimate
       updateStatusText();
 
       // Feedback visivo rapido a schermo
       const feedback = document.getElementById('feedback-text');
-      feedback.setAttribute('value', obj.type === 'icecream' ? "YUMMY!" : "QUACK!");
+      const textMap = {
+        icecream: "YUMMY!", duck: "QUACK!", tennis: "RIFLESSI!", donut: "GNAM!",
+        basketball: "CANESTRO!", bat: "CRUNCH!", sushi: "SLURP!", coffee: "CARICA!", clock: "SVEGLIA!"
+      };
+      feedback.setAttribute('value', textMap[obj.type] || "HIT!");
       feedback.setAttribute('visible', 'true');
       setTimeout(() => {
         feedback.setAttribute('visible', 'false');
       }, 500);
 
-      // Passaggio di livello
-      if (levelScore >= targetScore) {
+      if (levelScore >= LEVEL_CONFIGS[currentLevel - 1].target) {
         nextLevel();
       }
     }
 
-    // ================= PROGRESSIONE LIVELLI E STATI DI GIOCO =================
+    // ================= PROGRESSIONE LIVELLI E INTERFACCIA =================
     function updateStatusText() {
       const scoreText = document.getElementById('score-text');
-      if (currentLevel === 1) {
-        scoreText.setAttribute('value', `LV1 - GELATI COLPITI: ${levelScore}/${targetScore}\nPUNTI TOTALI: ${score}`);
-      } else if (currentLevel === 2) {
-        scoreText.setAttribute('value', `LV2 - ANATRE COLPITE: ${levelScore}/${targetScore}\nPUNTI TOTALI: ${score}`);
-      } else if (currentLevel === 3) {
-        scoreText.setAttribute('value', `VITA DEL CAPO: ${bossHP - levelScore} HP\nPUNTI TOTALI: ${score}`);
-      } else if (currentLevel === 4) {
-        scoreText.setAttribute('value', `VITTORIA FINALE!\nPUNTI TOTALI: ${score}`);
+      const config = LEVEL_CONFIGS[currentLevel - 1];
+      
+      if (currentLevel < 10) {
+        scoreText.setAttribute('value', `${config.name}\n${levelScore}/${config.target} | PUNTI TOTALI: ${score}`);
+      } else if (currentLevel === 10) {
+        scoreText.setAttribute('value', `VITA DEL CAPO: ${LEVEL_CONFIGS[9].target - levelScore} HP\nPUNTI TOTALI: ${score}`);
+      } else {
+        scoreText.setAttribute('value', `MATCH COMPLETATO!\nPUNTI TOTALI: ${score}`);
       }
     }
 
     function nextLevel() {
-      // Pulisce tutti gli oggetti ancora a schermo
+      // Pulisci lo schermo
       for (let obj of activeObjects) {
         if (obj.element.parentNode) {
           obj.element.parentNode.removeChild(obj.element);
@@ -385,23 +512,12 @@
       gameActive = false;
 
       const feedback = document.getElementById('feedback-text');
-      feedback.setAttribute('scale', '1.8 1.8 1.8');
+      feedback.setAttribute('scale', '1.6 1.6 1.6');
 
-      if (currentLevel === 2) {
+      if (currentLevel <= 10) {
+        const nextConfig = LEVEL_CONFIGS[currentLevel - 1];
         feedback.setAttribute('color', '#10b981');
-        feedback.setAttribute('value', "LIVELLO 1 SUPERATO!\nLIVELLO 2: ANATRE FLY!");
-        feedback.setAttribute('visible', 'true');
-        
-        setTimeout(() => {
-          feedback.setAttribute('visible', 'false');
-          feedback.setAttribute('scale', '1.4 1.4 1.4');
-          feedback.setAttribute('color', '#fbbf24');
-          startGameLoop();
-        }, 3000);
-
-      } else if (currentLevel === 3) {
-        feedback.setAttribute('color', '#ef4444');
-        feedback.setAttribute('value', "LIVELLO 2 SUPERATO!\nBOSS FINALE IN ARRIVO!");
+        feedback.setAttribute('value', `LIVELLO SUPERATO!\nPROSSIMO: ${nextConfig.name}\n"${nextConfig.desc}"`);
         feedback.setAttribute('visible', 'true');
         
         setTimeout(() => {
@@ -409,22 +525,45 @@
           feedback.setAttribute('scale', '1.4 1.4 1.4');
           feedback.setAttribute('color', '#fbbf24');
           
-          // Mostriamo il manichino del Boss!
-          document.getElementById('boss').setAttribute('visible', 'true');
+          if (currentLevel === 10) {
+            // Mostriamo il Boss e attiviamo le frasi burlone
+            document.getElementById('boss').setAttribute('visible', 'true');
+            triggerBossPhrase("Eccoti qui! Chi ti ha dato il permesso di fare boxe?");
+          }
+          
           updateStatusText();
           gameActive = true;
-        }, 3000);
+          lastTime = performance.now();
+          requestAnimationFrame(gameLoop);
+        }, 3500);
 
-      } else if (currentLevel === 4) {
-        // Vittoria! Il capo va KO!
+      } else {
+        // Vittoria finale sul Boss!
         feedback.setAttribute('color', '#10b981');
-        feedback.setAttribute('value', "IL CAPO E' KO!\nHAI VINTO IL MATCH!");
+        feedback.setAttribute('value', "STREPITOSO! IL CAPO E' KO!\nALLENAMENTO COMPLETATO!");
         feedback.setAttribute('visible', 'true');
         updateStatusText();
 
-        // Effetto KO comico: ruota il manichino di 90 gradi facendolo "sdraiare" di lato
-        document.getElementById('boss').setAttribute('animation', 'property: rotation; to: 0 0 90; dur: 800; easing: easeOutBounce; fill: forwards;');
+        // Nascondi eventuale fumetto rimasto
+        document.getElementById('boss-bubble').setAttribute('visible', 'false');
+
+        // KO comico del manichino
+        document.getElementById('boss').setAttribute('animation', 'property: rotation; to: 0 0 90; dur: 900; easing: easeOutBounce; fill: forwards;');
       }
+    }
+
+    // Gestione fumetto parlante del Boss
+    function triggerBossPhrase(phrase) {
+      const bubble = document.getElementById('boss-bubble');
+      const bubbleText = document.getElementById('boss-bubble-text');
+      
+      const txt = phrase || bossPhrases[Math.floor(Math.random() * bossPhrases.length)];
+      bubbleText.setAttribute('value', txt);
+      bubble.setAttribute('visible', 'true');
+      
+      setTimeout(() => {
+        bubble.setAttribute('visible', 'false');
+      }, 2500); // Svanisce dopo 2.5 secondi
     }
 
     // ================= TRACCIAMENTO DELLE MANI (MEDIAPIPE) =================
@@ -456,7 +595,7 @@
       gloveLeft.setAttribute('visible', 'false');
       gloveRight.setAttribute('visible', 'false');
 
-      if (!gameActive && currentLevel !== 3) return; // Non renderizza guantoni tra le transizioni dei livelli
+      if (!gameActive && currentLevel !== 10) return; 
 
       if (results.multiHandLandmarks && results.multiHandedness) {
         for (let i = 0; i < results.multiHandLandmarks.length; i++) {
@@ -464,17 +603,17 @@
           const handedness = results.multiHandedness[i].label;
           const handPos = landmarks[9];
 
-          // Calcolo asse X (Specchio per PC)
+          // Calcolo X (Specchio)
           let rawX = handPos.x;
           if (mirrorToggle.checked) {
             rawX = 1 - handPos.x;
           }
           const targetX = (rawX - 0.5) * 3;
 
-          // Calcolo asse Y
+          // Calcolo Y
           const targetY = (0.5 - handPos.y) * 2 + 1.6;
 
-          // Calcolo asse Z (profondità stimata)
+          // Calcolo Z (Distanza visuale)
           const dx = landmarks[0].x - landmarks[9].x;
           const dy = landmarks[0].y - landmarks[9].y;
           const handSize = Math.sqrt(dx*dx + dy*dy);
@@ -493,11 +632,17 @@
           activeGlove.setAttribute('visible', 'true');
           activeGlove.setAttribute('position', `${smoothPos.x} ${smoothPos.y} ${smoothPos.z}`);
 
-          // Calcola la velocità del movimento (per il rilevamento dei pugni)
+          // Velocità pugno
           const lastPos = (handedness === 'Left') ? lastLeftPos : lastRightPos;
           const vx = targetX - lastPos.x;
           const vy = targetY - lastPos.y;
           const speed = Math.sqrt(vx*vx + vy*vy);
+
+          // Registra pugno sferrato in aria ai fini fitness
+          if (speed > 0.12) {
+            punchesThrown++;
+            caloriesBurned += 0.08; // Consumo energetico per pugno a vuoto
+          }
 
           if (handedness === 'Left') {
             lastLeftPos = { x: targetX, y: targetY };
@@ -505,9 +650,10 @@
             lastRightPos = { x: targetX, y: targetY };
           }
 
-          // RILEVAMENTO IMPATTO SUL BOSS (Attivo solo al Livello 3)
-          if (currentLevel === 3 && gameActive && canHitBoss && speed > 0.12) {
-            const distToHead = Math.sqrt(Math.pow(targetX - 0, 2) + Math.pow(targetY - 1.68, 2));
+          // RILEVAMENTO IMPATTO SUL BOSS (Solo Livello 10!)
+          if (currentLevel === 10 && gameActive && canHitBoss && speed > 0.12) {
+            // Calcoliamo la distanza tenendo conto che il boss si muove a sinistra e destra (bossX)
+            const distToHead = Math.sqrt(Math.pow(targetX - bossX, 2) + Math.pow(targetY - 1.68, 2));
             if (distToHead < 0.42) {
               triggerBossHit();
             }
@@ -516,30 +662,35 @@
       }
     }
 
-    // Gestione del pugno andato a segno sul Boss (Livello 3)
+    // Gestione del pugno sul Boss
     function triggerBossHit() {
       canHitBoss = false;
       levelScore++;
-      score += 50; // I colpi sul boss danno più punti
+      score += 60; 
       updateStatusText();
       
       playPunchSound();
 
-      // Animazione testa rossa + vibrazione
+      // Attiva fumetto parlante del Boss con il 60% di probabilità per ogni pugno subito
+      if (Math.random() < 0.6) {
+        triggerBossPhrase();
+      }
+
+      // Animazione vibrazione testa
       const bossHead = document.getElementById('boss-head');
       bossHead.setAttribute('color', '#ef4444');
 
       let shakeCount = 0;
-      const originalPos = "0 1.68 0";
       const shakeInterval = setInterval(() => {
         if (shakeCount > 4) {
           clearInterval(shakeInterval);
-          bossHead.setAttribute('position', originalPos);
+          bossHead.setAttribute('position', "0 1.68 0");
           bossHead.setAttribute('color', '#1e293b');
           canHitBoss = true;
         } else {
           const offsetX = (Math.random() - 0.5) * 0.12;
           const offsetY = 1.68 + (Math.random() - 0.5) * 0.12;
+          // Imposta la posizione relativa locale dell'entità testa
           bossHead.setAttribute('position', `${offsetX} ${offsetY} 0`);
           shakeCount++;
         }
@@ -554,8 +705,8 @@
         feedback.setAttribute('visible', 'false');
       }, 600);
 
-      // Sconfitta del Boss
-      if (levelScore >= bossHP) {
+      // Sconfitta Boss
+      if (levelScore >= LEVEL_CONFIGS[9].target) {
         nextLevel();
       }
     }
