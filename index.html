@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VR Boss Boxing - Gym & Arcade 10 Levels</title>
+  <title>BoxA - VR Gym & Arcade</title>
   
   <!-- Tailwind CSS per l'interfaccia -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -16,42 +16,85 @@
 </head>
 <body class="bg-slate-950 text-white font-sans overflow-hidden">
 
+  <!-- ================= LOGO "BoxA" E INGRANAGGIO IMPOSTAZIONI (TOP LEFT) ================= -->
+  <div class="absolute top-4 left-4 z-[60] flex items-center space-x-3 pointer-events-auto">
+    <div class="text-2xl font-black bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-700 shadow-xl flex items-center space-x-1 tracking-wider">
+      <span>Box</span><span class="text-rose-600 font-extrabold text-3xl">A</span>
+    </div>
+    <button id="settings-btn" class="bg-slate-900/90 hover:bg-slate-800 p-2.5 rounded-xl border border-slate-700 shadow-xl transition-all cursor-pointer">
+      <svg class="w-6 h-6 text-slate-300 hover:text-rose-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- ================= MODALE IMPOSTAZIONI (SOVRAPPOSTO) ================= -->
+  <div id="settings-modal" class="hidden absolute inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="max-w-md w-full bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-2xl space-y-5">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h2 class="text-xl font-bold text-rose-500">Impostazioni BoxA</h2>
+        <button id="close-settings-btn" class="text-slate-400 hover:text-white text-sm font-bold bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg cursor-pointer">Chiudi</button>
+      </div>
+
+      <div class="space-y-4 text-left text-xs">
+        <!-- Impostazione VR CARD BOARD -->
+        <div class="flex items-start space-x-3">
+          <input type="checkbox" id="vr-toggle" class="w-5 h-5 rounded text-rose-600 focus:ring-rose-500 bg-slate-800 border-slate-700 mt-0.5" checked>
+          <div>
+            <span class="font-bold text-slate-200 text-sm block">Realtà Virtuale (Cardboard)</span>
+            <span class="text-slate-400">Attiva lo schermo sdoppiato all'avvio del gioco. Disattivalo se vuoi giocare in 2D direttamente su PC.</span>
+          </div>
+        </div>
+
+        <!-- Impostazione SPECCHIO -->
+        <div class="flex items-start space-x-3">
+          <input type="checkbox" id="mirror-toggle" class="w-5 h-5 rounded text-rose-600 focus:ring-rose-500 bg-slate-800 border-slate-700 mt-0.5">
+          <div>
+            <span class="font-bold text-slate-200 text-sm block">Specchia Comandi (PC)</span>
+            <span class="text-slate-400">Inverte l'asse orizzontale. Attivalo per correggere la direzione dei pugni quando usi la webcam frontale del PC.</span>
+          </div>
+        </div>
+
+        <!-- Impostazione PASSTHROUGH TRANSPARENT -->
+        <div class="flex items-start space-x-3">
+          <input type="checkbox" id="transparent-toggle" class="w-5 h-5 rounded text-rose-600 focus:ring-rose-500 bg-slate-800 border-slate-700 mt-0.5" checked>
+          <div>
+            <span class="font-bold text-slate-200 text-sm block">Sfondo Trasparente (Passthrough)</span>
+            <span class="text-slate-400">Mostra la fotocamera del telefono come sfondo del visore, permettendoti di vedere la tua stanza reale per sicurezza e immersione.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= SCHERMATA DI CONFIGURAZIONE (2D) ================= -->
-  <div id="setup-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-slate-950">
-    <div class="max-w-md w-full bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-800 text-center">
-      <h1 class="text-3xl font-black text-rose-500 mb-1 tracking-wider">VR BOSS BOXING</h1>
-      <p class="text-slate-400 text-xs mb-6">10 Livelli di Allenamento Cardio Intenso</p>
+  <div id="setup-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-slate-950 overflow-y-auto">
+    <div class="max-w-md w-full bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-800 text-center mt-12">
+      <h1 class="text-3xl font-black text-rose-500 mb-1 tracking-wider">BOXA VR CHAMP</h1>
+      <p class="text-slate-400 text-xs mb-6">Completa i livelli e affronta il Capo in modalità infinita!</p>
       
       <!-- Upload Foto -->
-      <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 mb-5 hover:border-rose-500 transition-colors bg-slate-950/50">
+      <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 mb-4 hover:border-rose-500 transition-colors bg-slate-950/50">
         <label class="block cursor-pointer">
-          <span class="text-xs text-slate-300 block mb-2 font-bold uppercase tracking-wider">Foto del "Capo" (Solo Viso):</span>
+          <span class="text-xs text-slate-300 block mb-2 font-bold uppercase tracking-wider">Seleziona una nuova foto (Solo Viso):</span>
           <input type="file" id="image-upload" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-rose-600 file:text-white hover:file:bg-rose-700 cursor-pointer" />
         </label>
         <div class="mt-3 flex justify-center">
-          <img id="preview-img" class="w-20 h-20 object-cover rounded-full border-4 border-rose-500 hidden" alt="Anteprima" />
+          <img id="preview-img" class="w-16 h-16 object-cover rounded-full border-4 border-rose-500 hidden" alt="Anteprima" />
         </div>
       </div>
 
-      <!-- Opzioni di Gioco -->
-      <div class="text-left bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 mb-6">
-        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Opzioni Calibrazione:</span>
-        
-        <!-- Toggle Specchio (PC) -->
-        <label class="flex items-center space-x-3 cursor-pointer">
-          <input type="checkbox" id="mirror-toggle" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-800 border-slate-700" checked>
-          <span class="text-xs text-slate-300 font-medium">Specchia comandi <b class="text-rose-400">(Consigliato per PC / Webcam)</b></span>
-        </label>
-
-        <!-- Toggle Sfondo Trasparente -->
-        <label class="flex items-center space-x-3 cursor-pointer">
-          <input type="checkbox" id="transparent-toggle" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-800 border-slate-700" checked>
-          <span class="text-xs text-slate-300 font-medium">Sfondo Trasparente <b class="text-emerald-400">(Vedi la stanza nel visore)</b></span>
-        </label>
+      <!-- Galleria Facce Precedenti -->
+      <div id="gallery-container" class="hidden text-left mb-6">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Facce in memoria (Scegline una):</span>
+        <div id="faces-gallery" class="flex items-center space-x-3 overflow-x-auto py-1">
+          <!-- Popolato via JS -->
+        </div>
       </div>
 
       <!-- Pulsante Avvia -->
-      <button id="start-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-rose-950/50 uppercase tracking-wider text-sm">
+      <button id="start-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-rose-950/50 uppercase tracking-wider text-sm cursor-pointer">
         Inizia il Match
       </button>
     </div>
@@ -73,27 +116,25 @@
 
     <!-- ================= IL MANICHINO DA BOXE (BOB DUMMY) ================= -->
     <a-entity id="boss" position="0 0 -1.7" visible="false">
-      <!-- Base pesante -->
       <a-cylinder position="0 0.08 0" radius="0.45" height="0.16" color="#334155"></a-cylinder>
-      <!-- Palo metallico -->
       <a-cylinder position="0 0.6 0" radius="0.04" height="0.9" color="#94a3b8"></a-cylinder>
-      <!-- Busto -->
       <a-cylinder position="0 1.1 0" radius="0.22" height="0.6" color="#1e293b" scale="1.2 1 0.7"></a-cylinder>
-      <!-- Spalle -->
       <a-box position="0 1.3 0" width="0.66" height="0.16" depth="0.24" color="#0f172a"></a-box>
-      <!-- Collo -->
       <a-cylinder position="0 1.44 0" radius="0.06" height="0.12" color="#94a3b8"></a-cylinder>
-      
-      <!-- Testa -->
       <a-box id="boss-head" position="0 1.68 0" width="0.36" height="0.42" depth="0.32" color="#1e293b">
         <a-plane id="boss-face" position="0 0 0.165" width="0.32" height="0.32" color="#ffffff"></a-plane>
       </a-box>
-
-      <!-- FUMETTO PARLANTE DEL BOSS -->
+      <!-- Fumetto parlante del Boss -->
       <a-entity id="boss-bubble" position="0 2.1 0" visible="false">
         <a-plane width="1.4" height="0.45" color="#ffffff" opacity="0.95"></a-plane>
         <a-text id="boss-bubble-text" value="" color="#0f172a" width="3" align="center" position="0 0 0.01" font="mozillavr"></a-text>
       </a-entity>
+    </a-entity>
+
+    <!-- ================= PANNELLO OLOGRAFICO DEL COACH (A DESTRA) ================= -->
+    <a-entity id="coach-board" position="1.3 1.8 -1.4" rotation="0 -35 0">
+      <a-plane width="1.3" height="0.5" color="#1e1b4b" opacity="0.85" border="1px solid #4f46e5"></a-plane>
+      <a-text id="coach-text" value="COACH:\nInizia a riscaldarti!" color="#a7f3d0" width="2.4" align="center" font="mozillavr"></a-text>
     </a-entity>
 
     <!-- ================= I GUANTI VIRTUALI ================= -->
@@ -101,7 +142,7 @@
     <a-sphere id="glove-right" radius="0.09" color="#dc2626" position="0.3 1.2 -1.0" visible="false"></a-sphere>
 
     <!-- Interfaccia 3D delle Statistiche Palestra -->
-    <a-text id="score-text" value="INIZIALIZZAZIONE..." position="0 2.4 -1.7" align="center" color="#ffffff" width="4" font="mozillavr"></a-text>
+    <a-text id="score-text" value="LIVELLO 1" position="0 2.4 -1.7" align="center" color="#ffffff" width="4" font="mozillavr"></a-text>
     <a-text id="gym-text" value="Pugni: 0 | KCAL: 0.0 | Tempo: 0s" position="0 2.2 -1.7" align="center" color="#10b981" width="3" font="mozillavr"></a-text>
     <a-text id="feedback-text" value="" position="0 1.8 -1.7" align="center" color="#fbbf24" scale="1.4 1.4 1.4" visible="false" font="mozillavr"></a-text>
 
@@ -117,6 +158,12 @@
     const setupScreen = document.getElementById('setup-screen');
     const gameScene = document.getElementById('game-scene');
     const videoElement = document.getElementById('webcam');
+    
+    // Toggles impostazioni
+    const settingsBtn = document.getElementById('settings-btn');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const vrToggle = document.getElementById('vr-toggle');
     const mirrorToggle = document.getElementById('mirror-toggle');
     const transparentToggle = document.getElementById('transparent-toggle');
     const virtualBg = document.getElementById('virtual-bg');
@@ -124,36 +171,34 @@
     let uploadedImageSrc = "";
     let audioCtx = null;
 
-    // --- STRUTTURA DEI 10 LIVELLI ---
+    // --- STRUTTURA DEI 10 LIVELLI BASE (Ciclici per Serie) ---
     const LEVEL_CONFIGS = [
-      { name: "LV1: CADUTA GELATI", target: 8, type: "icecream", desc: "Sotto la pioggia di calorie!" },
+      { name: "LV1: CADUTA GELATI", target: 8, type: "icecream", desc: "Evita la pioggia di calorie!" },
       { name: "LV2: ANATRE AL VOLO", target: 8, type: "duck", desc: "Prendi la mira di lato!" },
       { name: "LV3: TENNIS FRONTALE", target: 8, type: "tennis", desc: "Palle in faccia! Velocità di reazione!" },
       { name: "LV4: CIAMBELLE DIABOLICHE", target: 8, type: "donut", desc: "Ciambelle rotanti dall'alto!" },
       { name: "LV5: BASKET RIMBALZANTE", target: 8, type: "basketball", desc: "Rimbalzi ritmici! Colpisci al volo!" },
       { name: "LV6: PIPISTRELLI ZIG-ZAG", target: 8, type: "bat", desc: "Movimenti ondulatori rapidi!" },
-      { name: "LV7: SUSHI FRONTALE", target: 8, type: "sushi", desc: "Evita il sushi in faccia!" },
-      { name: "LV8: CAFFE' DIAGONALE", target: 8, type: "coffee", desc: "Le tazze volano dal basso a razzo!" },
-      { name: "LV9: SVEGLIE MATTUTINE", target: 8, type: "clock", desc: "Distruggi il lunedì mattina!" },
-      { name: "LV10: MATCH CON IL CAPO", target: 12, type: "boss", desc: "Il Capo si muove e schiva i tuoi pugni!" }
+      { name: "LV7: SUSHI FRONTALE", target: 8, type: "sushi", desc: "Evita il sushi volante!" },
+      { name: "LV8: CAFFE' DIAGONALE", target: 8, type: "coffee", desc: "Le tazzine volano dal basso a razzo!" },
+      { name: "LV9: SVEGLIE MATTUTINE", target: 8, type: "clock", desc: "Distruggi la sveglia del lunedì mattina!" },
+      { name: "LV10: MATCH CON IL CAPO", target: 12, type: "boss", desc: "Il Capo schiva i tuoi colpi spostandosi!" }
     ];
 
-    // --- VARIABILI DI GIOCO ---
-    let currentLevel = 1;      
-    let score = 0;             
-    let levelScore = 0;        
-    let punchesThrown = 0;
-    let caloriesBurned = 0;
-    let trainingStartTime = 0;
-    let bossX = 0;             // Posizione X dinamica del boss per schivare
-    
-    let activeObjects = [];    
-    let gameActive = false;
-    let spawnTimer = 0;
-    let lastTime = 0;
-    let canHitBoss = true;
+    // --- FRASI DEL COACH AZIENDALE (LIVELLI 1-9) ---
+    const coachPhrases = [
+      "Fai finta che quel gelato sia il report in ritardo!",
+      "Colpisci con la forza di chi vuole l'aumento!",
+      "Sudare è un dovere aziendale! Continua così!",
+      "Ogni pugno riduce lo stress da riunione inutile!",
+      "Ottima coordinazione! Ora torna a fatturare!",
+      "Suda adesso, fattura dopo! Forza!",
+      "Il fitness aziendale è l'unico benefit concesso!",
+      "Colpisci quell'anatra come fosse il lunedì mattina!",
+      "Ottimo jab! Questo ti garantirà un ticket restaurant!"
+    ];
 
-    // Frasi del boss per istigare il giocatore
+    // --- FRASI DI PROVOCAZIONE DEL BOSS (LIVELLO 10) ---
     const bossPhrases = [
       "Se mi colpisci ti tolgo le ferie!",
       "Straordinari non pagati per un mese!",
@@ -162,43 +207,131 @@
       "Niente smart working da lunedì!",
       "Ti sposto la scrivania vicino ai bagni!",
       "Dì addio al tuo weekend!",
-      "Questa insolenza ti costerà il bonus!",
+      "Insolente! Ti revoco il bonus!",
       "C'è traffico? Dovevi svegliarti prima!"
     ];
 
-    // Posizioni smorzate per eliminare i tremolii (Filtro Lerp)
+    // --- VARIABILI DI PROGRESSIONE INFINITA ---
+    let currentLevel = 1;      // Livello globale progressivo (1, 2, 3... 11, 12, ecc.)
+    let score = 0;             
+    let levelScore = 0;        
+    let punchesThrown = 0;
+    let caloriesBurned = 0;
+    let trainingStartTime = 0;
+    let bossX = 0;             
+    
+    let activeObjects = [];    
+    let gameActive = false;
+    let spawnTimer = 0;
+    let lastTime = 0;
+    let canHitBoss = true;
+
+    // Posizioni smorzate (Lerp)
     let gloveLeftPos = { x: -0.3, y: 1.2, z: -1.0 };
     let gloveRightPos = { x: 0.3, y: 1.2, z: -1.0 };
     const LERP_FACTOR = 0.35;
 
-    // Posizioni precedenti per calcolare la velocità
     let lastLeftPos = { x: 0, y: 0 };
     let lastRightPos = { x: 0, y: 0 };
 
-    // Gestione upload foto
+    // ================= FUNZIONI DI LOCALSTORAGE PER LE IMMAGINI =================
+    // Comprime l'immagine prima del salvataggio per non saturare la quota di 5MB
+    function compressAndStoreImage(base64) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 256, 256);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7); // Riduce peso a circa 15KB
+
+        let gallery = JSON.parse(localStorage.getItem('bossGallery') || '[]');
+        if (!gallery.includes(compressedBase64)) {
+          gallery.unshift(compressedBase64); // Mette in cima
+          if (gallery.length > 5) gallery.pop(); // Max 5 facce storiche
+          localStorage.setItem('bossGallery', JSON.stringify(gallery));
+        }
+        renderGallery();
+      };
+      img.src = base64;
+    }
+
+    function renderGallery() {
+      const gallery = JSON.parse(localStorage.getItem('bossGallery') || '[]');
+      const container = document.getElementById('gallery-container');
+      const list = document.getElementById('faces-gallery');
+      list.innerHTML = "";
+
+      if (gallery.length > 0) {
+        container.classList.remove('hidden');
+        gallery.forEach((imgSrc) => {
+          const btn = document.createElement('button');
+          btn.type = "button";
+          btn.className = "w-12 h-12 rounded-full border-2 border-slate-700 hover:border-rose-500 overflow-hidden flex-shrink-0 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-rose-500";
+          btn.innerHTML = `<img src="${imgSrc}" class="w-full h-full object-cover" />`;
+          btn.onclick = () => selectFace(imgSrc);
+          list.appendChild(btn);
+        });
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    function selectFace(imgSrc) {
+      uploadedImageSrc = imgSrc;
+      previewImg.src = imgSrc;
+      previewImg.classList.remove('hidden');
+    }
+
+    // Inizializza galleria al caricamento
+    renderGallery();
+
+    // Gestione input file caricato manuale
     imageUpload.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = function(event) {
-          uploadedImageSrc = event.target.result;
-          previewImg.src = uploadedImageSrc;
-          previewImg.classList.remove('hidden');
+          selectFace(event.target.result);
+          compressAndStoreImage(event.target.result);
         };
         reader.readAsDataURL(file);
       }
     });
 
+    // Modale Impostazioni (Apertura/Chiusura)
+    settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+    closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+    // ================= PROGRESSIONE INFINITA: GETTERS =================
+    // Ottiene l'indice della configurazione (da 0 a 9)
+    function getLevelIndex() {
+      return (currentLevel - 1) % 10;
+    }
+
+    // Ottiene la serie attiva (Serie 1, Serie 2, ecc.)
+    function getSeries() {
+      return Math.floor((currentLevel - 1) / 10) + 1;
+    }
+
+    // Calcola il moltiplicatore di velocità basato sulla serie (+25% di velocità a ogni serie)
+    function getSpeedMultiplier() {
+      const series = getSeries();
+      return 1 + (series - 1) * 0.25; 
+    }
+
     // Avvio del Gioco
     startBtn.addEventListener('click', async function() {
       if (!uploadedImageSrc) {
-        alert("Carica la foto del tuo capo prima di iniziare!");
+        alert("Carica o seleziona la foto del tuo capo prima di iniziare!");
         return;
       }
 
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       document.getElementById('boss-face').setAttribute('material', 'src', uploadedImageSrc);
 
+      // Trasparenza passthrough
       if (transparentToggle.checked) {
         virtualBg.setAttribute('visible', 'false');
         videoElement.style.display = 'block';
@@ -209,6 +342,16 @@
 
       setupScreen.style.display = 'none';
       gameScene.style.display = 'block';
+
+      // Auto-attivazione VR se abilitata
+      if (vrToggle.checked) {
+        const scene = document.querySelector('a-scene');
+        if (scene.hasLoaded) {
+          scene.enterVR();
+        } else {
+          scene.addEventListener('loaded', () => scene.enterVR());
+        }
+      }
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -224,7 +367,6 @@
       }
     });
 
-    // Suono 8-bit procedurale del pugno
     function playPunchSound() {
       if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
@@ -244,7 +386,7 @@
       osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    // ================= LOOP DI SPAWN E MOVIMENTO OGGETTI (LIVELLI 1-9) =================
+    // ================= LOOP DI SPAWN E MOVIMENTO OGGETTI =================
     function startGameLoop() {
       gameActive = true;
       lastTime = performance.now();
@@ -266,18 +408,21 @@
         `Pugni: ${punchesThrown} | KCAL: ${caloriesBurned.toFixed(1)} | Tempo: ${elapsedSec}s`
       );
 
-      // Movimento oscillatorio del capo solo nel Livello 10
-      if (currentLevel === 10) {
-        bossX = Math.sin(time * 0.0018) * 0.65; // Schivata automatica destra/sinistra di 65cm
+      const levelIndex = getLevelIndex();
+      const activeConfig = LEVEL_CONFIGS[levelIndex];
+
+      // Movimento oscillatorio del capo (solo se siamo nel livello boss, ovvero livello indice 9)
+      if (levelIndex === 9) {
+        bossX = Math.sin(time * 0.0018) * 0.65; // Schivata automatica destra/sinistra
         document.getElementById('boss').setAttribute('position', `${bossX} 0 -1.7`);
       }
 
-      // Se siamo nei primi 9 livelli, gestiamo lo spawn
-      if (currentLevel < 10) {
+      // Se non siamo nel livello boss, gestiamo gli oggetti che cadono/volano
+      if (levelIndex < 9) {
         spawnTimer += dt;
-        // Velocità di spawn incrementale ad ogni livello
-        const baseSpawnInterval = 1.5;
-        const spawnInterval = Math.max(0.7, baseSpawnInterval - (currentLevel * 0.09));
+        // Tempo di spawn basato sul moltiplicatore di velocità della serie attiva
+        const baseSpawnInterval = 1.5 - (levelIndex * 0.08);
+        const spawnInterval = Math.max(0.6, baseSpawnInterval / getSpeedMultiplier());
         
         if (spawnTimer >= spawnInterval) {
           spawnTimer = 0;
@@ -298,10 +443,12 @@
 
       let x = 0, y = 0, z = -1.5;
       let vx = 0, vy = 0, vz = 0;
-      let type = LEVEL_CONFIGS[currentLevel - 1].type;
       
-      // Coefficiente di velocità progressivo per livello (+15% per livello)
-      const speedMult = 1 + (currentLevel * 0.15);
+      const levelIndex = getLevelIndex();
+      const type = LEVEL_CONFIGS[levelIndex].type;
+      
+      // Velocità scalata progressivamente in base alla serie (+25% per serie successiva)
+      const speedMult = getSpeedMultiplier();
 
       switch (type) {
         case 'icecream': // Gelati cadenti
@@ -328,11 +475,11 @@
           `;
           break;
 
-        case 'tennis': // Palle da tennis frontali (partono da lontano, arrivano in faccia!)
+        case 'tennis': // Palle da tennis frontali (arrivano in faccia!)
           x = (Math.random() - 0.5) * 1.5;
           y = 1.2 + Math.random() * 0.6;
-          z = -4.0; // Molto lontano
-          vz = 1.6 * speedMult; // Si muove verso il giocatore
+          z = -4.0; 
+          vz = 1.6 * speedMult; 
           entity.innerHTML = `<a-sphere radius="0.08" color="#a3e635"></a-sphere>`;
           break;
 
@@ -343,7 +490,7 @@
           entity.innerHTML = `<a-torus radius="0.09" radius-tubular="0.03" color="#db2777" animation="property: rotation; to: 360 360 0; loop: true; dur: 2000"></a-torus>`;
           break;
 
-        case 'basketball': // Palloni da basket rimbalzanti (movimento ad onda)
+        case 'basketball': // Palloni da basket rimbalzanti (onda)
           const fromL5 = Math.random() > 0.5;
           x = fromL5 ? -2.5 : 2.5;
           y = 1.3;
@@ -373,9 +520,9 @@
 
         case 'coffee': // Tazze di caffè diagonali
           x = Math.random() > 0.5 ? -2.0 : 2.0;
-          y = 0.2; // Partono dal basso
+          y = 0.2; 
           vx = x < 0 ? 1.3 * speedMult : -1.3 * speedMult;
-          vy = 1.1 * speedMult; // Volano verso l'alto
+          vy = 1.1 * speedMult; 
           entity.innerHTML = `<a-cylinder radius="0.08" height="0.14" color="#f1f5f9"></a-cylinder>`;
           break;
 
@@ -400,11 +547,11 @@
         type: type,
         x: x, y: y, z: z,
         vx: vx, vy: vy, vz: vz,
-        spawnTime: performance.now() // Per formule sinusoidali (onde)
+        spawnTime: performance.now()
       });
     }
 
-    // Aggiorna posizioni e controlla le collisioni 3D
+    // Aggiorna posizioni degli oggetti e controlla le collisioni 3D
     function updateMovingObjects(dt, time) {
       const remaining = [];
 
@@ -413,27 +560,23 @@
         obj.y += obj.vy * dt;
         obj.z += obj.vz * dt;
 
-        // Effetti speciali di movimento (Rimbalzi e oscillazioni)
+        // Oscillazioni sinusoidali
         if (obj.type === 'basketball') {
-          // Rimbalzo tramite seno assoluto
           const age = (time - obj.spawnTime) / 1000;
           obj.y = 1.1 + Math.abs(Math.sin(age * 5)) * 0.7;
         } else if (obj.type === 'bat') {
-          // Oscillazione continua su e giù
           const age = (time - obj.spawnTime) / 1000;
           obj.y = 1.5 + Math.sin(age * 8) * 0.35;
         }
 
         obj.element.setAttribute('position', `${obj.x} ${obj.y} ${obj.z}`);
 
-        // Rilevamento collisione 3D reale
         let hit = false;
         if (checkCollision(obj, gloveLeftPos) || checkCollision(obj, gloveRightPos)) {
           hit = true;
           triggerObjectHit(obj);
         }
 
-        // Limiti per rimozione out-of-bounds
         let outOfBounds = false;
         if (obj.y < 0.15 || obj.y > 4.0 || Math.abs(obj.x) > 2.8 || obj.z > -0.7) {
           outOfBounds = true;
@@ -456,7 +599,7 @@
       const dy = obj.y - glove.y;
       const dz = obj.z - glove.z;
       const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-      return dist < 0.35; // Raggio hitbox 35cm
+      return dist < 0.35;
     }
 
     function triggerObjectHit(obj) {
@@ -464,10 +607,14 @@
       levelScore++;
       score += 15;
       punchesThrown++;
-      caloriesBurned += 0.15; // Calorie palestra stimate
+      caloriesBurned += 0.15; 
       updateStatusText();
 
-      // Feedback visivo rapido a schermo
+      // Ogni 3 oggetti colpiti, il Coach manda un fumetto motivazionale/ironico
+      if (levelScore % 3 === 0) {
+        triggerCoachPhrase();
+      }
+
       const feedback = document.getElementById('feedback-text');
       const textMap = {
         icecream: "YUMMY!", duck: "QUACK!", tennis: "RIFLESSI!", donut: "GNAM!",
@@ -479,27 +626,27 @@
         feedback.setAttribute('visible', 'false');
       }, 500);
 
-      if (levelScore >= LEVEL_CONFIGS[currentLevel - 1].target) {
+      const levelIndex = getLevelIndex();
+      if (levelScore >= LEVEL_CONFIGS[levelIndex].target) {
         nextLevel();
       }
     }
 
-    // ================= PROGRESSIONE LIVELLI E INTERFACCIA =================
+    // ================= INTERFACCIA E PROGRESSIONE DEI LIVELLI =================
     function updateStatusText() {
       const scoreText = document.getElementById('score-text');
-      const config = LEVEL_CONFIGS[currentLevel - 1];
+      const levelIndex = getLevelIndex();
+      const config = LEVEL_CONFIGS[levelIndex];
+      const series = getSeries();
       
-      if (currentLevel < 10) {
-        scoreText.setAttribute('value', `${config.name}\n${levelScore}/${config.target} | PUNTI TOTALI: ${score}`);
-      } else if (currentLevel === 10) {
-        scoreText.setAttribute('value', `VITA DEL CAPO: ${LEVEL_CONFIGS[9].target - levelScore} HP\nPUNTI TOTALI: ${score}`);
+      if (levelIndex < 9) {
+        scoreText.setAttribute('value', `SERIE ${series} - ${config.name}\n${levelScore}/${config.target} | PUNTI TOTALI: ${score}`);
       } else {
-        scoreText.setAttribute('value', `MATCH COMPLETATO!\nPUNTI TOTALI: ${score}`);
+        scoreText.setAttribute('value', `SERIE ${series} - VITA DEL CAPO: ${config.target - levelScore} HP\nPUNTI: ${score}`);
       }
     }
 
     function nextLevel() {
-      // Pulisci lo schermo
       for (let obj of activeObjects) {
         if (obj.element.parentNode) {
           obj.element.parentNode.removeChild(obj.element);
@@ -514,45 +661,49 @@
       const feedback = document.getElementById('feedback-text');
       feedback.setAttribute('scale', '1.6 1.6 1.6');
 
-      if (currentLevel <= 10) {
-        const nextConfig = LEVEL_CONFIGS[currentLevel - 1];
-        feedback.setAttribute('color', '#10b981');
-        feedback.setAttribute('value', `LIVELLO SUPERATO!\nPROSSIMO: ${nextConfig.name}\n"${nextConfig.desc}"`);
-        feedback.setAttribute('visible', 'true');
-        
-        setTimeout(() => {
-          feedback.setAttribute('visible', 'false');
-          feedback.setAttribute('scale', '1.4 1.4 1.4');
-          feedback.setAttribute('color', '#fbbf24');
-          
-          if (currentLevel === 10) {
-            // Mostriamo il Boss e attiviamo le frasi burlone
-            document.getElementById('boss').setAttribute('visible', 'true');
-            triggerBossPhrase("Eccoti qui! Chi ti ha dato il permesso di fare boxe?");
-          }
-          
-          updateStatusText();
-          gameActive = true;
-          lastTime = performance.now();
-          requestAnimationFrame(gameLoop);
-        }, 3500);
+      const nextLevelIndex = getLevelIndex();
+      const nextSeries = getSeries();
+      const nextConfig = LEVEL_CONFIGS[nextLevelIndex];
 
+      feedback.setAttribute('color', '#10b981');
+      
+      // Controllo se abbiamo completato una serie intera da 10 livelli
+      if (nextLevelIndex === 0) {
+        // Nuova Serie!
+        const speedBonus = Math.round((getSpeedMultiplier() - 1) * 100);
+        feedback.setAttribute('value', `COMPLIMENTI! SERIE ${nextSeries - 1} COMPLETATA!\nAVVIO SERIE ${nextSeries}\n(VELOCITÀ +${speedBonus}%)`);
+        document.getElementById('boss').setAttribute('visible', 'false'); // Nasconde il manichino sconfitto
+        // Ripristina la rotazione del manichino
+        document.getElementById('boss').setAttribute('rotation', '0 0 0');
       } else {
-        // Vittoria finale sul Boss!
-        feedback.setAttribute('color', '#10b981');
-        feedback.setAttribute('value', "STREPITOSO! IL CAPO E' KO!\nALLENAMENTO COMPLETATO!");
-        feedback.setAttribute('visible', 'true');
-        updateStatusText();
-
-        // Nascondi eventuale fumetto rimasto
-        document.getElementById('boss-bubble').setAttribute('visible', 'false');
-
-        // KO comico del manichino
-        document.getElementById('boss').setAttribute('animation', 'property: rotation; to: 0 0 90; dur: 900; easing: easeOutBounce; fill: forwards;');
+        // Semplice passaggio livello
+        feedback.setAttribute('value', `LIVELLO SUPERATO!\nPROSSIMO: ${nextConfig.name}\n"${nextConfig.desc}"`);
       }
+
+      feedback.setAttribute('visible', 'true');
+      
+      setTimeout(() => {
+        feedback.setAttribute('visible', 'false');
+        feedback.setAttribute('scale', '1.4 1.4 1.4');
+        feedback.setAttribute('color', '#fbbf24');
+        
+        if (nextLevelIndex === 9) {
+          // Livello Boss: mostra il manichino
+          document.getElementById('boss').setAttribute('visible', 'true');
+          triggerBossPhrase("Voglio quel report entro ieri! Muoviti!");
+        } else {
+          // Altrimenti il boss deve stare nascosto
+          document.getElementById('boss').setAttribute('visible', 'false');
+        }
+        
+        updateStatusText();
+        gameActive = true;
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+      }, 3500);
     }
 
-    // Gestione fumetto parlante del Boss
+    // Fumetto parlante del Boss (Livello 10)
     function triggerBossPhrase(phrase) {
       const bubble = document.getElementById('boss-bubble');
       const bubbleText = document.getElementById('boss-bubble-text');
@@ -563,7 +714,14 @@
       
       setTimeout(() => {
         bubble.setAttribute('visible', 'false');
-      }, 2500); // Svanisce dopo 2.5 secondi
+      }, 2500);
+    }
+
+    // Aggiorna il testo del Coach olografico sulla destra
+    function triggerCoachPhrase() {
+      const coachText = document.getElementById('coach-text');
+      const phrase = coachPhrases[Math.floor(Math.random() * coachPhrases.length)];
+      coachText.setAttribute('value', `COACH:\n${phrase}`);
     }
 
     // ================= TRACCIAMENTO DELLE MANI (MEDIAPIPE) =================
@@ -595,7 +753,8 @@
       gloveLeft.setAttribute('visible', 'false');
       gloveRight.setAttribute('visible', 'false');
 
-      if (!gameActive && currentLevel !== 10) return; 
+      const levelIndex = getLevelIndex();
+      if (!gameActive && levelIndex !== 9) return; 
 
       if (results.multiHandLandmarks && results.multiHandedness) {
         for (let i = 0; i < results.multiHandLandmarks.length; i++) {
@@ -638,10 +797,10 @@
           const vy = targetY - lastPos.y;
           const speed = Math.sqrt(vx*vx + vy*vy);
 
-          // Registra pugno sferrato in aria ai fini fitness
+          // Consumo energetico cardio
           if (speed > 0.12) {
             punchesThrown++;
-            caloriesBurned += 0.08; // Consumo energetico per pugno a vuoto
+            caloriesBurned += 0.08; 
           }
 
           if (handedness === 'Left') {
@@ -650,9 +809,8 @@
             lastRightPos = { x: targetX, y: targetY };
           }
 
-          // RILEVAMENTO IMPATTO SUL BOSS (Solo Livello 10!)
-          if (currentLevel === 10 && gameActive && canHitBoss && speed > 0.12) {
-            // Calcoliamo la distanza tenendo conto che il boss si muove a sinistra e destra (bossX)
+          // RILEVAMENTO IMPATTO SUL BOSS (Solo al decimo livello di ogni serie!)
+          if (levelIndex === 9 && gameActive && canHitBoss && speed > 0.12) {
             const distToHead = Math.sqrt(Math.pow(targetX - bossX, 2) + Math.pow(targetY - 1.68, 2));
             if (distToHead < 0.42) {
               triggerBossHit();
@@ -662,7 +820,6 @@
       }
     }
 
-    // Gestione del pugno sul Boss
     function triggerBossHit() {
       canHitBoss = false;
       levelScore++;
@@ -671,7 +828,7 @@
       
       playPunchSound();
 
-      // Attiva fumetto parlante del Boss con il 60% di probabilità per ogni pugno subito
+      // Provocazione del Boss con il 60% di probabilità
       if (Math.random() < 0.6) {
         triggerBossPhrase();
       }
@@ -690,7 +847,6 @@
         } else {
           const offsetX = (Math.random() - 0.5) * 0.12;
           const offsetY = 1.68 + (Math.random() - 0.5) * 0.12;
-          // Imposta la posizione relativa locale dell'entità testa
           bossHead.setAttribute('position', `${offsetX} ${offsetY} 0`);
           shakeCount++;
         }
@@ -705,8 +861,8 @@
         feedback.setAttribute('visible', 'false');
       }, 600);
 
-      // Sconfitta Boss
-      if (levelScore >= LEVEL_CONFIGS[9].target) {
+      const levelIndex = getLevelIndex();
+      if (levelScore >= LEVEL_CONFIGS[levelIndex].target) {
         nextLevel();
       }
     }
